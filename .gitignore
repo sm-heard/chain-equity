@@ -20,6 +20,9 @@ out/
 # Data
 data/
 
+# Hardhat
+apps/contracts/cache/
+apps/contracts/artifacts/
+
 # OS
 .DS_Store
-
