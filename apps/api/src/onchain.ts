@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
+import { resolve, isAbsolute } from 'node:path'
 import {
   Address,
   Chain,
@@ -27,9 +27,12 @@ let cached: Clients | null = null
 
 function loadAbi(): typeof gatedTokenAbi {
   if (!env.abiPath) return gatedTokenAbi
-  const absolute = resolve(process.cwd(), env.abiPath)
+  const absolute = isAbsolute(env.abiPath)
+    ? env.abiPath
+    : resolve(process.cwd(), '..', '..', env.abiPath)
   const contents = readFileSync(absolute, 'utf-8')
-  return JSON.parse(contents) as typeof gatedTokenAbi
+  const artifact = JSON.parse(contents) as { abi: typeof gatedTokenAbi }
+  return artifact.abi
 }
 
 export function getClients(): Clients {

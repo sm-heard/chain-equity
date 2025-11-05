@@ -34,9 +34,32 @@ export async function changeSymbol(adminWallet: string, newSymbol: string) {
   return client.post('/admin/change-symbol', { newSymbol }, { headers: adminHeaders(adminWallet) })
 }
 
-export async function exportSnapshot(block: number) {
+export type SnapshotHolder = {
+  address: string
+  balance: string
+  onChainBalance: string
+  ownershipPct: number
+}
+
+export type SnapshotResponse = {
+  ok: boolean
+  block: number
+  totalSupply: string
+  holders: SnapshotHolder[]
+  discrepancies: Array<{ address: string; indexed: string; onChain: string }>
+}
+
+export async function fetchSnapshot(block?: number): Promise<SnapshotResponse> {
   const res = await client.get('/export', { params: { block } })
-  return res.data
+  return res.data as SnapshotResponse
+}
+
+export async function downloadSnapshotCsv(block?: number) {
+  const res = await client.get('/export', {
+    params: { block, format: 'csv' },
+    responseType: 'text',
+  })
+  return res.data as string
 }
 
 export async function fetchHealth() {

@@ -1,4 +1,3 @@
-import 'dotenv/config'
 import { Hono } from 'hono'
 import { logger as honoLogger } from 'hono/logger'
 import { serve } from '@hono/node-server'
@@ -8,6 +7,7 @@ import { zValidator } from '@hono/zod-validator'
 import { env } from './env.js'
 import { getClients } from './onchain.js'
 import { approveWallet, revokeWallet, mintTokens, getBalance, getAdminWallet } from './services/tokenService.js'
+import { generateSnapshot, snapshotToCsv } from './services/snapshotService.js'
 
 const app = new Hono()
 const log = pino({ level: process.env.LOG_LEVEL || 'info' })
@@ -131,11 +131,44 @@ app.post(
 
 app.get(
   '/export',
-  zValidator('query', z.object({ block: z.coerce.number().int().nonnegative() })),
+  zValidator(
+    'query',
+    z.object({
+      block: z.coerce.number().int().nonnegative().optional(),
+      format: z.enum(['csv', 'json']).optional().default('json'),
+    })
+  ),
   async (c) => {
-    const { block } = c.req.valid('query')
-    log.info({ block }, 'export cap-table (stub)')
-    return c.json({ ok: false, block, rows: [], error: 'snapshot export not implemented yet' }, 501)
+    const { block, format } = c.req.valid('query')
+    try {
+      const snapshot = await generateSnapshot(block)
+      if (format === 'csv') {
+        const csv = snapshotToCsv(snapshot)
+        return c.body(csv, 200, {
+          'content-type': 'text/csv',
+          'content-disposition': `attachment; filename="cap-table-block-${snapshot.block}.csv"`,
+        })
+      }
+      return c.json({
+        ok: true,
+        block: snapshot.block,
+        totalSupply: snapshot.totalSupply.toString(),
+        holders: snapshot.rows.map((row) => ({
+          address: row.address,
+          balance: row.balance.toString(),
+          onChainBalance: row.onChainBalance.toString(),
+          ownershipPct: row.ownershipPct,
+        })),
+        discrepancies: snapshot.discrepancies.map((d) => ({
+          address: d.address,
+          indexed: d.indexed.toString(),
+          onChain: d.onChain.toString(),
+        })),
+      })
+    } catch (error) {
+      log.error({ err: error, block }, 'snapshot export failed')
+      return c.json({ error: formatError(error) }, 500)
+    }
   }
 )
 

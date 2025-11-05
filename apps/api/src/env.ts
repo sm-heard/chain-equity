@@ -1,4 +1,10 @@
+import { resolve } from 'node:path'
+import { config as loadEnv } from 'dotenv'
 import { getAddress, Hex } from 'viem'
+
+// Load env files: root .env first, then local overrides.
+loadEnv({ path: resolve(process.cwd(), '../../.env') })
+loadEnv()
 
 function requireEnv(name: string): string {
   const value = process.env[name]

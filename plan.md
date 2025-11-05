@@ -56,7 +56,7 @@ This is the working plan to deliver the MVP per prd.md and ChainEquity.md. It’
   - [ ] Document manual `npm install` for contracts workspace (network restricted)
   - [ ] Optional: introduce Foundry once available
 - [ ] Deploy scripts
-  - [ ] Local (hardhat network/anvil): run script and capture addresses
+  - [x] Local (hardhat network): run script and capture addresses (0x5FbDB2315678afecb367f032d93F642f64180aa3)
   - [ ] Sepolia deployment instructions (after verification)
 - [ ] Docs
   - [ ] Record addresses, ABIs, and links in README and prd.md
@@ -92,17 +92,19 @@ Deliverables: API/CLI performing real chain ops with proper validation and loggi
 ---
 ## Phase 3 — Indexer & Cap-Table Export
 
-- [ ] Event ingestion
-  - [ ] Subscribe to `Transfer` (and Mint/Burn), fallback to polling
-  - [ ] Store events with block, txhash, topics, data
-  - [ ] Maintain current holder balances incrementally
+- [x] Event ingestion
+  - [x] Poll confirmed blocks using viem `getLogs`
+  - [x] Store events with block, tx hash, topics, data
+  - [x] Maintain holder balances incrementally in SQLite
 - [ ] Reorg handling
-  - [ ] Confirmation depth (default 5 blocks) before finalizing state
-  - [ ] Rollback and reprocess on reorg
-- [ ] Snapshot export
-  - [ ] Build as-of block N snapshot: address, balance, ownership % (rounded to 4 decimals)
-  - [ ] Reconcile: fetch `balanceOf` at block N for each holder and assert equality
-  - [ ] Export CSV and JSON; provide both CLI and API access
+  - [x] Confirmation depth (configurable) before finalizing state
+  - [ ] Rollback and reprocess on reorg (future enhancement)
+- [x] Snapshot export (base)
+  - [x] Build as-of block N snapshot (address, balance, ownership %)
+  - [x] Reconcile balances vs on-chain at block N
+  - [x] Export JSON/CSV via API and CLI/web wiring
+- [ ] Snapshot export (enhanced)
+  - [ ] Ownership rounding review & pagination for large sets
 - [ ] Old→New continuity (migration)
   - [ ] Persist mapping from migration events and expose “current token”
 - [ ] Tests

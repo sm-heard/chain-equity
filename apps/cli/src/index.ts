@@ -11,6 +11,7 @@ import {
   getRpcUrl,
 } from './tokenService.js'
 import { getClients } from './onchain.js'
+import { env } from './env.js'
 
 const logger = pino({ level: process.env.LOG_LEVEL || 'info' })
 
@@ -80,8 +81,22 @@ program
     await run('export', async () => {
       const parsed = Number(block)
       if (!Number.isInteger(parsed) || parsed < 0) throw new Error('Block must be a non-negative integer')
-      logger.warn('Snapshot export not implemented yet. Indexer integration pending.')
-      console.log(`Requested block ${parsed} format ${opts.format}. Implement indexer first.`)
+      const format = opts.format === 'json' ? 'json' : 'csv'
+      const url = new URL('/export', env.apiBaseUrl)
+      url.searchParams.set('block', parsed.toString())
+      url.searchParams.set('format', format)
+      const res = await fetch(url.toString())
+      if (!res.ok) {
+        const text = await res.text().catch(() => '')
+        throw new Error(`Export failed (${res.status}): ${text}`)
+      }
+      if (format === 'csv') {
+        const csv = await res.text()
+        console.log(csv)
+      } else {
+        const json = await res.json()
+        console.log(JSON.stringify(json, null, 2))
+      }
     })
   })
 
@@ -112,4 +127,9 @@ program
     })
   })
 
-program.parseAsync()
+if (process.argv.length <= 2) {
+  program.outputHelp()
+  process.exit(0)
+} else {
+  program.parseAsync()
+}

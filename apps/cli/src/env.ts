@@ -1,4 +1,9 @@
+import { resolve } from 'node:path'
+import { config as loadEnv } from 'dotenv'
 import { getAddress, Hex } from 'viem'
+
+loadEnv({ path: resolve(process.cwd(), '../../.env') })
+loadEnv()
 
 function requireEnv(name: string): string {
   const value = process.env[name]
@@ -20,6 +25,7 @@ export const env = {
   adminWallet: getAddress(requireEnv('ADMIN_WALLET')),
   tokenAddress: getAddress(requireEnv('GATED_TOKEN_ADDRESS')),
   abiPath: process.env.GATED_TOKEN_ABI_PATH,
+  apiBaseUrl: process.env.API_BASE_URL || process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8787',
 }
 
 export type Env = typeof env

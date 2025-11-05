@@ -16,10 +16,10 @@ import {
   mintTokens,
   triggerSplit,
   changeSymbol,
-  exportSnapshot,
+  fetchSnapshot,
   fetchHealth,
 } from '@/lib/api'
-import { ADMIN_WALLET } from '@/lib/config'
+import { ADMIN_WALLET, API_BASE_URL } from '@/lib/config'
 
 type ActionState = { status: 'idle' | 'success' | 'error'; message?: string }
 
@@ -47,12 +47,6 @@ function useActionFeedback<TArgs extends unknown[]>(
   return { mutate: mutation.mutateAsync, isLoading: mutation.isPending, state }
 }
 
-const MOCK_HOLDERS = [
-  { address: '0xAlice...', balance: '1000', ownership: '50.00%' },
-  { address: '0xBob...', balance: '700', ownership: '35.00%' },
-  { address: '0xCarol...', balance: '300', ownership: '15.00%' },
-]
-
 export default function Home() {
   const { address, isConnected } = useAccount()
   const lowerAddress = useMemo(() => address?.toLowerCase() || '', [address])
@@ -69,7 +63,6 @@ export default function Home() {
   const mint = useActionFeedback(async (adminWallet: string, wallet: string, amount: number) => mintTokens(adminWallet, wallet, amount))
   const split = useActionFeedback(async (adminWallet: string, ratio: string) => triggerSplit(adminWallet, ratio))
   const symbol = useActionFeedback(async (adminWallet: string, newSymbol: string) => changeSymbol(adminWallet, newSymbol))
-  const snapshot = useActionFeedback(async (block: number) => exportSnapshot(block))
 
   const [approveWalletValue, setApproveWalletValue] = useState('')
   const [revokeWalletValue, setRevokeWalletValue] = useState('')
@@ -77,7 +70,14 @@ export default function Home() {
   const [mintAmount, setMintAmount] = useState('1')
   const [splitRatio, setSplitRatio] = useState('7:1')
   const [newSymbol, setNewSymbol] = useState('NEW')
-  const [snapshotBlock, setSnapshotBlock] = useState('0')
+  const [snapshotBlock, setSnapshotBlock] = useState('')
+  const [snapshotStatus, setSnapshotStatus] = useState<ActionState>({ status: 'idle' })
+
+  const snapshotQuery = useQuery({
+    queryKey: ['snapshot'],
+    queryFn: () => fetchSnapshot(),
+    refetchInterval: 10_000,
+  })
 
   const disabled = !isConnected || !isAdmin
 
@@ -165,6 +165,7 @@ export default function Home() {
                   event.preventDefault()
                   if (!approveWalletValue || !lowerAddress) return
                   await approve.mutate([lowerAddress, approveWalletValue])
+                  await snapshotQuery.refetch()
                 }}
                 className="space-y-3"
               >
@@ -195,6 +196,7 @@ export default function Home() {
                   event.preventDefault()
                   if (!revokeWalletValue || !lowerAddress) return
                   await revoke.mutate([lowerAddress, revokeWalletValue])
+                  await snapshotQuery.refetch()
                 }}
                 className="space-y-3"
               >
@@ -231,6 +233,7 @@ export default function Home() {
                   event.preventDefault()
                   if (!mintWallet || Number.isNaN(Number(mintAmount)) || !lowerAddress) return
                   await mint.mutate([lowerAddress, mintWallet, Number(mintAmount)])
+                  await snapshotQuery.refetch()
                 }}
                 className="space-y-3"
               >
@@ -342,60 +345,133 @@ export default function Home() {
               <form
                 onSubmit={async (event) => {
                   event.preventDefault()
-                  const block = Number(snapshotBlock)
-                  if (Number.isNaN(block)) return
-                  await snapshot.mutate([block])
+                  const block = snapshotBlock ? Number(snapshotBlock) : undefined
+                  if (snapshotBlock && Number.isNaN(block)) {
+                    setSnapshotStatus({ status: 'error', message: 'Block must be an integer' })
+                    return
+                  }
+                  await snapshotMutation.mutateAsync(block)
                 }}
                 className="space-y-3"
               >
                 <div className="space-y-1">
-                  <Label htmlFor="snapshot-block">Block number</Label>
+                  <Label htmlFor="snapshot-block">Block number (leave blank for latest)</Label>
                   <Input
                     id="snapshot-block"
                     type="number"
                     min="0"
                     value={snapshotBlock}
                     onChange={(event) => setSnapshotBlock(event.target.value)}
+                    placeholder={snapshotQuery.data ? String(snapshotQuery.data.block) : 'latest'}
                   />
                 </div>
-                <Button type="submit" disabled={!isConnected || snapshot.isLoading}>
-                  {snapshot.isLoading ? 'Exporting...' : 'Export Snapshot'}
-                </Button>
-                {snapshot.state.status === 'error' && (
-                  <p className="text-sm text-red-600">{snapshot.state.message}</p>
+                <div className="flex flex-wrap gap-3">
+                  <Button type="submit" disabled={snapshotMutation.isPending}>
+                    {snapshotMutation.isPending ? 'Refreshing...' : 'Refresh Snapshot'}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    disabled={snapshotQuery.isLoading}
+                    onClick={async () => {
+                      try {
+                        const block = snapshotBlock ? Number(snapshotBlock) : undefined
+                        if (snapshotBlock && Number.isNaN(block)) throw new Error('Block must be an integer')
+                        const csv = await downloadSnapshotCsv(block)
+                        const blob = new Blob([csv], { type: 'text/csv' })
+                        const url = URL.createObjectURL(blob)
+                        const a = document.createElement('a')
+                        a.href = url
+                        a.download = `cap-table-${block ?? snapshotQuery.data?.block ?? 'latest'}.csv`
+                        document.body.appendChild(a)
+                        a.click()
+                        a.remove()
+                        URL.revokeObjectURL(url)
+                        setSnapshotStatus({ status: 'success', message: 'CSV downloaded' })
+                      } catch (error) {
+                        setSnapshotStatus({
+                          status: 'error',
+                          message: error instanceof Error ? error.message : 'CSV download failed',
+                        })
+                      }
+                    }}
+                  >
+                    Download CSV
+                  </Button>
+                </div>
+                {snapshotStatus.status === 'error' && (
+                  <p className="text-sm text-red-600">{snapshotStatus.message}</p>
                 )}
-                {snapshot.state.status === 'success' && (
-                  <p className="text-sm text-emerald-600">Snapshot request sent.</p>
+                {snapshotStatus.status === 'success' && (
+                  <p className="text-sm text-emerald-600">{snapshotStatus.message}</p>
                 )}
               </form>
 
               <Separator />
 
               <div>
-                <h4 className="text-sm font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
-                  Latest holders (demo data)
-                </h4>
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <h4 className="text-sm font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
+                      Snapshot Holders
+                    </h4>
+                    <p className="text-xs text-neutral-500 dark:text-neutral-500">
+                      Block {snapshotQuery.data?.block ?? '—'} · Total supply{' '}
+                      {snapshotQuery.data?.totalSupply ?? '—'}
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    disabled={snapshotQuery.isLoading}
+                    onClick={() => snapshotQuery.refetch()}
+                  >
+                    Refresh
+                  </Button>
+                </div>
                 <Table className="mt-3">
                   <TableHeader>
                     <TableRow>
                       <TableHead>Wallet</TableHead>
                       <TableHead className="text-right">Balance</TableHead>
-                      <TableHead className="text-right">Ownership</TableHead>
+                      <TableHead className="text-right">On-Chain</TableHead>
+                      <TableHead className="text-right">Ownership %</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {MOCK_HOLDERS.map((holder) => (
+                    {snapshotQuery.isLoading && (
+                      <TableRow>
+                        <TableCell colSpan={4} className="text-center text-sm text-neutral-500 dark:text-neutral-400">
+                          Loading snapshot…
+                        </TableCell>
+                      </TableRow>
+                    )}
+                    {!snapshotQuery.isLoading && snapshotQuery.data?.holders.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={4} className="text-center text-sm text-neutral-500 dark:text-neutral-400">
+                          No holders indexed yet.
+                        </TableCell>
+                      </TableRow>
+                    )}
+                    {snapshotQuery.data?.holders.map((holder) => (
                       <TableRow key={holder.address}>
                         <TableCell className="font-mono text-xs">{holder.address}</TableCell>
                         <TableCell className="text-right">{holder.balance}</TableCell>
-                        <TableCell className="text-right">{holder.ownership}</TableCell>
+                        <TableCell className="text-right">{holder.onChainBalance}</TableCell>
+                        <TableCell className="text-right">{holder.ownershipPct.toFixed(2)}%</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
                 </Table>
-                <p className="mt-2 text-xs text-neutral-500 dark:text-neutral-500">
-                  Replace with indexer data once live.
-                </p>
+                {snapshotQuery.data?.discrepancies.length ? (
+                  <p className="mt-2 text-xs text-red-600 dark:text-red-400">
+                    Warning: {snapshotQuery.data.discrepancies.length} holder(s) mismatch on-chain balances.
+                  </p>
+                ) : (
+                  <p className="mt-2 text-xs text-neutral-500 dark:text-neutral-500">
+                    Snapshot reconciled with on-chain balances at block {snapshotQuery.data?.block ?? '—'}.
+                  </p>
+                )}
               </div>
             </CardContent>
           </Card>
