@@ -1,0 +1,23 @@
+{
+  "name": "chain-equity",
+  "private": true,
+  "version": "0.1.0",
+  "description": "ChainEquity monorepo (contracts, CLI, API, indexer, web)",
+  "workspaces": [
+    "apps/*"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev:cli": "npm run dev -w @chainequity/cli",
+    "dev:api": "npm run dev -w @chainequity/api",
+    "dev:indexer": "npm run dev -w @chainequity/indexer",
+    "dev:web": "npm run dev -w @chainequity/web",
+    "build": "npm -ws run build",
+    "lint": "echo 'no lint configured'",
+    "start:api": "npm run start -w @chainequity/api",
+    "start:web": "npm run start -w @chainequity/web"
+  }
+}
+

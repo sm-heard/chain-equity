@@ -1,0 +1,30 @@
+{
+  "name": "@chainequity/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "dist/server.js",
+  "scripts": {
+    "dev": "tsx src/server.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/server.js"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.11.3",
+    "@hono/zod-validator": "^0.2.1",
+    "dotenv": "^16.4.5",
+    "hono": "^4.5.11",
+    "pino": "^9.2.0",
+    "viem": "^2.9.18",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.30",
+    "tsx": "^4.16.2",
+    "typescript": "^5.4.5"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
+
