@@ -25,12 +25,12 @@ export type SnapshotResult = {
   discrepancies: Array<{ address: string; indexed: bigint; onChain: bigint }>
 }
 
-function getLastProcessedBlock(db: Database) {
+function getLastProcessedBlock(db: any) {
   const row = db.prepare('SELECT value FROM meta WHERE key = ?').get('last_processed_block') as { value: string } | undefined
   return row ? Number(row.value) : null
 }
 
-function loadEventsUpTo(db: Database, block: number): EventRow[] {
+function loadEventsUpTo(db: any, block: number): EventRow[] {
   return db
     .prepare(
       'SELECT block, log_index, from_address, to_address, value FROM events WHERE block <= ? ORDER BY block ASC, log_index ASC'
@@ -60,7 +60,7 @@ function applyEvents(events: EventRow[]) {
 }
 
 export async function generateSnapshot(requestedBlock?: number): Promise<SnapshotResult> {
-  const db = new Database(env.dbPath, { readonly: true })
+  const db = new Database(env.dbPath)
   const lastProcessed = getLastProcessedBlock(db)
   if (lastProcessed === null) {
     throw new Error('Indexer has not processed any blocks yet')

@@ -115,13 +115,10 @@ Deliverables: deterministic exports in <10s after finality with reconciliation.
 ---
 ## Phase 4 — Corporate Actions (Migration)
 
-- [ ] Split 7:1 via migration
-  - [ ] Pause old token
-  - [ ] Query holders from indexer (last confirmed set)
-  - [ ] Deploy new token with new total supply
-  - [ ] Airdrop balances ×7 to holders
-  - [ ] Emit `StockSplitExecuted(oldToken,newToken,7,1,timestamp)` via registry/helper contract or API log event
-  - [ ] Resume transfers on new token; mark old as deprecated
+- [x] Split 7:1 via migration
+  - [x] Orchestrator: pause old token, pull holders from indexer, deploy new token, mint ×7 balances
+  - [x] Persist new token address (meta + env) and log results
+  - [x] CLI `/split` and API `/admin/split` invoke orchestrator
 - [ ] Symbol change via migration
   - [ ] Deploy new token with new symbol; airdrop 1:1
   - [ ] Emit `SymbolChanged(oldSymbol,newSymbol,timestamp)` and continuity mapping

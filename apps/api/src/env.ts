@@ -1,4 +1,4 @@
-import { resolve } from 'node:path'
+import { resolve, isAbsolute } from 'node:path'
 import { config as loadEnv } from 'dotenv'
 import { getAddress, Hex } from 'viem'
 
@@ -17,6 +17,12 @@ function normalizePrivateKey(key: string): Hex {
 }
 
 const alchemyKey = process.env.ALCHEMY_API_KEY
+const dbPathEnv = process.env.INDEXER_DB_PATH
+const resolvedDbPath = dbPathEnv
+  ? isAbsolute(dbPathEnv)
+    ? dbPathEnv
+    : resolve(process.cwd(), '..', '..', dbPathEnv)
+  : resolve(process.cwd(), '..', '..', 'apps/indexer/data/indexer.sqlite')
 
 export const env = {
   rpcUrl:
@@ -26,6 +32,7 @@ export const env = {
   adminWallet: getAddress(requireEnv('ADMIN_WALLET')),
   tokenAddress: getAddress(requireEnv('GATED_TOKEN_ADDRESS')),
   abiPath: process.env.GATED_TOKEN_ABI_PATH,
+  dbPath: resolvedDbPath,
 }
 
 export type Env = typeof env

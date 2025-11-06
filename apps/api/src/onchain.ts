@@ -35,6 +35,7 @@ function loadAbi(): typeof gatedTokenAbi {
         resolve(process.cwd(), env.abiPath),
         resolve(fileURLToPath(new URL('..', import.meta.url)), env.abiPath),
         resolve(fileURLToPath(new URL('../..', import.meta.url)), env.abiPath),
+        resolve(fileURLToPath(new URL('../../..', import.meta.url)), env.abiPath),
       ]
   const absolute = candidates.find((path) => existsSync(path))
   if (!absolute) throw new Error(`ABI file not found for path ${env.abiPath}`)

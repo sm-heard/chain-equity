@@ -34,18 +34,18 @@ export function openDb(path: string) {
   return db
 }
 
-export function getMeta(db: Database, key: string) {
+export function getMeta(db: any, key: string) {
   const row = db.prepare('SELECT value FROM meta WHERE key = ?').get(key) as { value: string } | undefined
   return row?.value ?? null
 }
 
-export function setMeta(db: Database, key: string, value: string) {
+export function setMeta(db: any, key: string, value: string) {
   db.prepare('INSERT OR REPLACE INTO meta(key, value) VALUES(?, ?)').run(key, value)
 }
 
 const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000'
 
-function adjustBalance(db: Database, address: string, delta: bigint) {
+function adjustBalance(db: any, address: string, delta: bigint) {
   if (address === ZERO_ADDRESS) return
   const normalized = address.toLowerCase()
   const row = db.prepare('SELECT balance FROM holders WHERE address = ?').get(normalized) as HolderRow | undefined
@@ -60,13 +60,13 @@ function adjustBalance(db: Database, address: string, delta: bigint) {
   }
 }
 
-export function applyTransfer(db: Database, from: string, to: string, value: bigint) {
+export function applyTransfer(db: any, from: string, to: string, value: bigint) {
   adjustBalance(db, from, -value)
   adjustBalance(db, to, value)
 }
 
 export function recordEvent(
-  db: Database,
+  db: any,
   params: {
     block: number
     logIndex: number
@@ -92,6 +92,6 @@ export function recordEvent(
   )
 }
 
-export function listHolders(db: Database): HolderRow[] {
+export function listHolders(db: any): HolderRow[] {
   return db.prepare('SELECT address, balance FROM holders ORDER BY address').all() as HolderRow[]
 }

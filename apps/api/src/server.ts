@@ -8,6 +8,7 @@ import { env } from './env.js'
 import { getClients } from './onchain.js'
 import { approveWallet, revokeWallet, mintTokens, getBalance, getAdminWallet } from './services/tokenService.js'
 import { generateSnapshot, snapshotToCsv } from './services/snapshotService.js'
+import { performStockSplit } from './services/migrations/splitService.js'
 
 const app = new Hono()
 const log = pino({ level: process.env.LOG_LEVEL || 'info' })
@@ -103,16 +104,31 @@ app.post(
   }
 )
 
+const splitSchema = z.object({
+  ratio: z
+    .preprocess((val) => {
+      if (typeof val === 'string' && val.length > 0) return Number(val)
+      return val
+    }, z.number().int().min(2))
+    .optional(),
+})
+
 app.post(
   '/admin/split',
   zValidator('header', adminHeaderSchema),
-  zValidator('json', z.object({ ratio: z.string().default('7:1') })),
+  zValidator('json', splitSchema),
   async (c) => {
     const hdr = adminHeaderSchema.parse(Object.fromEntries(c.req.raw.headers))
     if (!isAdmin(hdr['x-admin-wallet'])) return c.json({ error: 'unauthorized' }, 401)
-    const { ratio } = c.req.valid('json')
-    log.info({ ratio }, 'stock split (migration) not yet implemented')
-    return c.json({ ok: false, error: 'split not implemented yet' }, 501)
+    const body = c.req.valid('json')
+    const ratio = body?.ratio ?? 7
+    try {
+      const result = await performStockSplit(ratio)
+      return c.json({ ok: true, result })
+    } catch (error) {
+      log.error({ err: error, ratio }, 'stock split failed')
+      return c.json({ error: formatError(error) }, 500)
+    }
   }
 )
 

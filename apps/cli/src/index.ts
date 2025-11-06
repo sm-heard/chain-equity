@@ -101,6 +101,30 @@ program
   })
 
 program
+  .command('split')
+  .option('--ratio <ratio>', 'integer split ratio (default 7)', '7')
+  .action(async (opts) => {
+    await run('split', async () => {
+      const ratio = Number(opts.ratio)
+      if (!Number.isInteger(ratio) || ratio <= 1) throw new Error('Ratio must be an integer greater than 1')
+      const res = await fetch(new URL('/admin/split', env.apiBaseUrl).toString(), {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-admin-wallet': env.adminWallet,
+        },
+        body: JSON.stringify({ ratio }),
+      })
+      if (!res.ok) {
+        const text = await res.text().catch(() => '')
+        throw new Error(`Split failed (${res.status}): ${text}`)
+      }
+      const json = await res.json()
+      console.log(JSON.stringify(json, null, 2))
+    })
+  })
+
+program
   .command('status')
   .action(async () => {
     await run('status', async () => {
