@@ -79,6 +79,18 @@ export default function Home() {
     refetchInterval: 10_000,
   })
 
+  const snapshotMutation = useMutation({
+    mutationFn: async (block: number | undefined) => fetchSnapshot(block),
+    onMutate: () => setSnapshotStatus({ status: 'idle' }),
+    onSuccess: async (data) => {
+      setSnapshotStatus({ status: 'success', message: `Snapshot refreshed (block ${data.block})` })
+      await snapshotQuery.refetch()
+    },
+    onError: (err: unknown) => {
+      setSnapshotStatus({ status: 'error', message: err instanceof Error ? err.message : 'Snapshot failed' })
+    },
+  })
+
   const disabled = !isConnected || !isAdmin
 
   return (

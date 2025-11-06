@@ -15,6 +15,8 @@ export async function approveWallet(wallet: string) {
   const { walletClient, tokenAddress, tokenAbi } = getClients()
   const target = toAddress(wallet)
   const hash = await walletClient.writeContract({
+    chain: walletClient.chain,
+    account: walletClient.account!,
     abi: tokenAbi,
     address: tokenAddress,
     functionName: 'setAllowlistStatus',
@@ -27,6 +29,8 @@ export async function revokeWallet(wallet: string) {
   const { walletClient, tokenAddress, tokenAbi } = getClients()
   const target = toAddress(wallet)
   const hash = await walletClient.writeContract({
+    chain: walletClient.chain,
+    account: walletClient.account!,
     abi: tokenAbi,
     address: tokenAddress,
     functionName: 'setAllowlistStatus',
@@ -40,6 +44,8 @@ export async function mintTokens(wallet: string, amount: number) {
   const { walletClient, tokenAddress, tokenAbi } = getClients()
   const target = toAddress(wallet)
   const hash = await walletClient.writeContract({
+    chain: walletClient.chain,
+    account: walletClient.account!,
     abi: tokenAbi,
     address: tokenAddress,
     functionName: 'mint',
