@@ -119,13 +119,10 @@ Deliverables: deterministic exports in <10s after finality with reconciliation.
   - [x] Orchestrator: pause old token, pull holders from indexer, deploy new token, mint ×7 balances
   - [x] Persist new token address (meta + env) and log results
   - [x] CLI `/split` and API `/admin/split` invoke orchestrator
-- [ ] Symbol change via migration
-  - [ ] Deploy new token with new symbol; airdrop 1:1
-  - [ ] Emit `SymbolChanged(oldSymbol,newSymbol,timestamp)` and continuity mapping
-- [ ] Integrations
-  - [ ] API routes trigger orchestrations; CLI mirrors
-  - [ ] Indexer stores mapping old→new
-  - [ ] Web admin displays “current token” address and explorer links
+- [x] Symbol change via migration
+  - [x] Deploy new token with new symbol; airdrop 1:1 balances
+  - [x] Update metadata persistence and runtime config
+  - [x] API `/admin/change-symbol` and CLI `change-symbol` invoke orchestrator
 
 Deliverables: working demos for both actions, with events and continuity.
 

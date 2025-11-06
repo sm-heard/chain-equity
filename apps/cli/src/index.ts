@@ -125,6 +125,31 @@ program
   })
 
 program
+  .command('change-symbol')
+  .argument('<symbol>', 'new token symbol')
+  .option('--name <name>', 'optional new token name')
+  .action(async (symbol, opts) => {
+    await run('change-symbol', async () => {
+      const payload: Record<string, string> = { newSymbol: symbol }
+      if (opts.name) payload.newName = opts.name
+      const res = await fetch(new URL('/admin/change-symbol', env.apiBaseUrl).toString(), {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-admin-wallet': env.adminWallet,
+        },
+        body: JSON.stringify(payload),
+      })
+      if (!res.ok) {
+        const text = await res.text().catch(() => '')
+        throw new Error(`Symbol change failed (${res.status}): ${text}`)
+      }
+      const json = await res.json()
+      console.log(JSON.stringify(json, null, 2))
+    })
+  })
+
+program
   .command('status')
   .action(async () => {
     await run('status', async () => {

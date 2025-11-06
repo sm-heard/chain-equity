@@ -16,8 +16,8 @@
     "dev:web": "npm run dev -w @chainequity/web",
     "build": "npm -ws run build",
     "lint": "echo 'no lint configured'",
+    "test:integration": "npm run build -w @chainequity/api && TSX_DISABLE_IPC=1 TMPDIR=/tmp node --test apps/api/tests/migrations.test.mjs",
     "start:api": "npm run start -w @chainequity/api",
     "start:web": "npm run start -w @chainequity/web"
   }
 }
-

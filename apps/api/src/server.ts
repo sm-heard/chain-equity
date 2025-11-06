@@ -9,6 +9,7 @@ import { getClients } from './onchain.js'
 import { approveWallet, revokeWallet, mintTokens, getBalance, getAdminWallet } from './services/tokenService.js'
 import { generateSnapshot, snapshotToCsv } from './services/snapshotService.js'
 import { performStockSplit } from './services/migrations/splitService.js'
+import { performSymbolChange } from './services/migrations/symbolService.js'
 
 const app = new Hono()
 const log = pino({ level: process.env.LOG_LEVEL || 'info' })
@@ -132,16 +133,26 @@ app.post(
   }
 )
 
+const symbolSchema = z.object({
+  newSymbol: z.string().min(1),
+  newName: z.string().min(1).optional(),
+})
+
 app.post(
   '/admin/change-symbol',
   zValidator('header', adminHeaderSchema),
-  zValidator('json', z.object({ newSymbol: z.string().min(1) })),
+  zValidator('json', symbolSchema),
   async (c) => {
     const hdr = adminHeaderSchema.parse(Object.fromEntries(c.req.raw.headers))
     if (!isAdmin(hdr['x-admin-wallet'])) return c.json({ error: 'unauthorized' }, 401)
-    const { newSymbol } = c.req.valid('json')
-    log.info({ newSymbol }, 'symbol change (migration) not yet implemented')
-    return c.json({ ok: false, error: 'symbol change not implemented yet' }, 501)
+    const { newSymbol, newName } = c.req.valid('json')
+    try {
+      const result = await performSymbolChange(newSymbol, newName)
+      return c.json({ ok: true, result })
+    } catch (error) {
+      log.error({ err: error, newSymbol }, 'symbol change failed')
+      return c.json({ error: formatError(error) }, 500)
+    }
   }
 )
 

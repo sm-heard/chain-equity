@@ -30,8 +30,10 @@ export async function triggerSplit(adminWallet: string, ratio: string) {
   return client.post('/admin/split', { ratio }, { headers: adminHeaders(adminWallet) })
 }
 
-export async function changeSymbol(adminWallet: string, newSymbol: string) {
-  return client.post('/admin/change-symbol', { newSymbol }, { headers: adminHeaders(adminWallet) })
+export async function changeSymbol(adminWallet: string, newSymbol: string, newName?: string) {
+  const payload: Record<string, string> = { newSymbol }
+  if (newName) payload.newName = newName
+  return client.post('/admin/change-symbol', payload, { headers: adminHeaders(adminWallet) })
 }
 
 export type SnapshotHolder = {
