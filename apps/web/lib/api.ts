@@ -26,8 +26,19 @@ export async function mintTokens(adminWallet: string, wallet: string, amount: nu
   return client.post('/admin/mint', { wallet, amount }, { headers: adminHeaders(adminWallet) })
 }
 
-export async function triggerSplit(adminWallet: string, ratio: string) {
-  return client.post('/admin/split', { ratio }, { headers: adminHeaders(adminWallet) })
+export async function triggerSplit(adminWallet: string, ratioInput: string) {
+  const trimmed = ratioInput.trim()
+  const payload: { ratio?: number } = {}
+
+  if (trimmed.length > 0) {
+    const parsed = Number(trimmed)
+    if (!Number.isInteger(parsed) || parsed < 2) {
+      throw new Error('Ratio must be an integer of 2 or greater.')
+    }
+    payload.ratio = parsed
+  }
+
+  return client.post('/admin/split', payload, { headers: adminHeaders(adminWallet) })
 }
 
 export async function changeSymbol(adminWallet: string, newSymbol: string, newName?: string) {
@@ -52,13 +63,17 @@ export type SnapshotResponse = {
 }
 
 export async function fetchSnapshot(block?: number): Promise<SnapshotResponse> {
-  const res = await client.get('/export', { params: { block } })
+  const params: Record<string, number> = {}
+  if (typeof block === 'number') params.block = block
+  const res = await client.get('/export', { params })
   return res.data as SnapshotResponse
 }
 
 export async function downloadSnapshotCsv(block?: number) {
+  const params: Record<string, string | number> = { format: 'csv' }
+  if (typeof block === 'number') params.block = block
   const res = await client.get('/export', {
-    params: { block, format: 'csv' },
+    params,
     responseType: 'text',
   })
   return res.data as string

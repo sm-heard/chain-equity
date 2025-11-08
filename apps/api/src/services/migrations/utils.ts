@@ -127,7 +127,13 @@ async function allowAndMint(
 function persistNewTokenAddress(newToken: `0x${string}`) {
   try {
     const db = new Database(env.dbPath)
-    db.prepare('INSERT OR REPLACE INTO meta(key, value) VALUES(?, ?)').run('current_token_address', newToken)
+    const reset = db.transaction(() => {
+      db.prepare('DELETE FROM events').run()
+      db.prepare('DELETE FROM holders').run()
+      db.prepare('DELETE FROM meta WHERE key = ?').run('last_processed_block')
+      db.prepare('INSERT OR REPLACE INTO meta(key, value) VALUES(?, ?)').run('current_token_address', newToken)
+    })
+    reset()
     db.close()
   } catch (error) {
     log.warn({ err: error }, 'failed to persist current token address meta')

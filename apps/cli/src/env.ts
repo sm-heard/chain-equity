@@ -1,6 +1,7 @@
-import { resolve } from 'node:path'
+import { resolve, isAbsolute } from 'node:path'
 import { config as loadEnv } from 'dotenv'
 import { getAddress, Hex } from 'viem'
+import { fileURLToPath } from 'node:url'
 
 loadEnv({ path: resolve(process.cwd(), '../../.env') })
 loadEnv()
@@ -16,6 +17,14 @@ function normalizePrivateKey(key: string): Hex {
 }
 
 const alchemyKey = process.env.ALCHEMY_API_KEY
+const repoRoot = fileURLToPath(new URL('../../..', import.meta.url))
+const defaultDbPath = resolve(repoRoot, 'apps/indexer/data/indexer.sqlite')
+const dbPathEnv = process.env.INDEXER_DB_PATH
+const dbPath = dbPathEnv
+  ? isAbsolute(dbPathEnv)
+    ? dbPathEnv
+    : resolve(repoRoot, dbPathEnv)
+  : defaultDbPath
 
 export const env = {
   rpcUrl:
@@ -26,6 +35,7 @@ export const env = {
   tokenAddress: getAddress(requireEnv('GATED_TOKEN_ADDRESS')),
   abiPath: process.env.GATED_TOKEN_ABI_PATH,
   apiBaseUrl: process.env.API_BASE_URL || process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8787',
+  dbPath,
 }
 
 

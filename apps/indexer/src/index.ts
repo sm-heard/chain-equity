@@ -1,4 +1,4 @@
-import { createPublicClient, http, parseAbiItem } from 'viem'
+import { Address, createPublicClient, getAddress, http, parseAbiItem } from 'viem'
 import pino from 'pino'
 import { openDb, applyTransfer, recordEvent, getMeta, setMeta } from './db.js'
 import { env } from './env.js'
@@ -10,11 +10,40 @@ const BATCH_SIZE = Number(process.env.INDEXER_BATCH_SIZE || '500')
 
 const publicClient = createPublicClient({ transport: http(env.rpcUrl) })
 const transferEvent = parseAbiItem('event Transfer(address indexed from, address indexed to, uint256 value)')
+let tokenAddress: Address = env.tokenAddress
+
+function initializeTokenAddressMeta(db: ReturnType<typeof openDb>) {
+  const stored = getMeta(db, 'current_token_address')
+  if (!stored) {
+    setMeta(db, 'current_token_address', tokenAddress)
+    return
+  }
+  try {
+    tokenAddress = getAddress(stored)
+  } catch (error) {
+    log.warn({ err: error, stored }, 'invalid current token address meta; resetting to env token')
+    setMeta(db, 'current_token_address', tokenAddress)
+  }
+}
+
+function refreshTokenAddress(db: ReturnType<typeof openDb>) {
+  const stored = getMeta(db, 'current_token_address')
+  if (!stored) return
+  try {
+    const next = getAddress(stored)
+    if (next !== tokenAddress) {
+      log.info({ previous: tokenAddress, next }, 'detected token address change')
+      tokenAddress = next
+    }
+  } catch (error) {
+    log.error({ err: error, stored }, 'failed to parse current token address meta')
+  }
+}
 
 async function processRange(db: ReturnType<typeof openDb>, fromBlock: number, toBlock: number) {
   if (fromBlock > toBlock) return
   const logs = await publicClient.getLogs({
-    address: env.tokenAddress,
+    address: tokenAddress,
     event: transferEvent,
     fromBlock: BigInt(fromBlock),
     toBlock: BigInt(toBlock),
@@ -44,6 +73,7 @@ async function processRange(db: ReturnType<typeof openDb>, fromBlock: number, to
 }
 
 async function sync(db: ReturnType<typeof openDb>) {
+  refreshTokenAddress(db)
   const latest = Number(await publicClient.getBlockNumber())
   const target = Math.max(latest - env.confirmations, 0)
   const stored = getMeta(db, 'last_processed_block')
@@ -64,8 +94,9 @@ async function sync(db: ReturnType<typeof openDb>) {
 
 async function main() {
   const db = openDb(env.dbPath)
+  initializeTokenAddressMeta(db)
   const chainId = await publicClient.getChainId().catch(() => undefined)
-  log.info({ rpc: env.rpcUrl, token: env.tokenAddress, chainId }, 'indexer started')
+  log.info({ rpc: env.rpcUrl, token: tokenAddress, chainId }, 'indexer started')
 
   await sync(db)
   setInterval(() => {

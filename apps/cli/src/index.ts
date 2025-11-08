@@ -10,7 +10,7 @@ import {
   getAdminWallet,
   getRpcUrl,
 } from './tokenService.js'
-import { getClients } from './onchain.js'
+import { getClients, invalidateClients } from './onchain.js'
 import { env } from './env.js'
 
 const logger = pino({ level: process.env.LOG_LEVEL || 'info' })
@@ -120,6 +120,7 @@ program
         throw new Error(`Split failed (${res.status}): ${text}`)
       }
       const json = await res.json()
+      invalidateClients()
       console.log(JSON.stringify(json, null, 2))
     })
   })
@@ -145,6 +146,7 @@ program
         throw new Error(`Symbol change failed (${res.status}): ${text}`)
       }
       const json = await res.json()
+      invalidateClients()
       console.log(JSON.stringify(json, null, 2))
     })
   })

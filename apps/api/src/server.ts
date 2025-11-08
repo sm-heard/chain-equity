@@ -1,11 +1,12 @@
 import { Hono } from 'hono'
+import { cors } from 'hono/cors'
 import { logger as honoLogger } from 'hono/logger'
 import { serve } from '@hono/node-server'
 import pino from 'pino'
 import { z } from 'zod'
 import { zValidator } from '@hono/zod-validator'
 import { env } from './env.js'
-import { getClients } from './onchain.js'
+import { getClients, getCurrentTokenAddress } from './onchain.js'
 import { approveWallet, revokeWallet, mintTokens, getBalance, getAdminWallet } from './services/tokenService.js'
 import { generateSnapshot, snapshotToCsv } from './services/snapshotService.js'
 import { performStockSplit } from './services/migrations/splitService.js'
@@ -15,6 +16,14 @@ const app = new Hono()
 const log = pino({ level: process.env.LOG_LEVEL || 'info' })
 
 app.use('*', honoLogger())
+app.use(
+  '*',
+  cors({
+    origin: (origin) => origin ?? '*',
+    allowHeaders: ['Content-Type', 'x-admin-wallet'],
+    allowMethods: ['GET', 'POST', 'OPTIONS'],
+  })
+)
 
 const adminWallet = getAdminWallet().toLowerCase()
 
@@ -44,6 +53,16 @@ app.get('/health', async (c) => {
     return c.json({ ok: true, chainId, blockNumber: Number(blockNumber), tokenAddress })
   } catch (error) {
     log.error({ err: error }, 'health check failed')
+    return c.json({ ok: false, error: formatError(error) }, 500)
+  }
+})
+
+app.get('/meta/token', (c) => {
+  try {
+    const tokenAddress = getCurrentTokenAddress()
+    return c.json({ ok: true, tokenAddress })
+  } catch (error) {
+    log.error({ err: error }, 'failed to read current token address')
     return c.json({ ok: false, error: formatError(error) }, 500)
   }
 })
@@ -108,7 +127,11 @@ app.post(
 const splitSchema = z.object({
   ratio: z
     .preprocess((val) => {
-      if (typeof val === 'string' && val.length > 0) return Number(val)
+      if (typeof val === 'string') {
+        const trimmed = val.trim()
+        if (trimmed.length === 0) return undefined
+        return Number(trimmed)
+      }
       return val
     }, z.number().int().min(2))
     .optional(),

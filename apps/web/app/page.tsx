@@ -17,6 +17,7 @@ import {
   triggerSplit,
   changeSymbol,
   fetchSnapshot,
+  downloadSnapshotCsv,
   fetchHealth,
 } from '@/lib/api'
 import { ADMIN_WALLET, API_BASE_URL } from '@/lib/config'
@@ -68,7 +69,7 @@ export default function Home() {
   const [revokeWalletValue, setRevokeWalletValue] = useState('')
   const [mintWallet, setMintWallet] = useState('')
   const [mintAmount, setMintAmount] = useState('1')
-  const [splitRatio, setSplitRatio] = useState('7:1')
+  const [splitRatio, setSplitRatio] = useState('7')
   const [newSymbol, setNewSymbol] = useState('NEW')
   const [snapshotBlock, setSnapshotBlock] = useState('')
   const [snapshotStatus, setSnapshotStatus] = useState<ActionState>({ status: 'idle' })

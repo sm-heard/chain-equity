@@ -14,6 +14,7 @@ import {
 } from 'viem'
 import { sepolia } from 'viem/chains'
 import { privateKeyToAccount } from 'viem/accounts'
+import Database from 'better-sqlite3'
 import { env } from './env.js'
 import { gatedTokenAbi } from './abi/gatedToken.js'
 
@@ -26,6 +27,20 @@ type Clients = {
 }
 
 let cached: Clients | null = null
+
+function readTokenAddressFromMeta(): Address | null {
+  try {
+    const db = new Database(env.dbPath, { readonly: true })
+    const row = db.prepare('SELECT value FROM meta WHERE key = ?').get('current_token_address') as
+      | { value: string }
+      | undefined
+    db.close()
+    if (!row?.value) return null
+    return getAddress(row.value)
+  } catch {
+    return null
+  }
+}
 
 function loadAbi(): typeof gatedTokenAbi {
   if (!env.abiPath) return gatedTokenAbi
@@ -62,11 +77,13 @@ export function getClients(): Clients {
   const transport = http(env.rpcUrl)
   const tokenAbi = loadAbi()
 
+  const tokenAddress = readTokenAddressFromMeta() ?? env.tokenAddress
+
   cached = {
     publicClient: createPublicClient({ chain, transport }),
     walletClient: createWalletClient({ chain, account, transport }),
     chain,
-    tokenAddress: getAddress(env.tokenAddress),
+    tokenAddress,
     tokenAbi,
   }
   return cached
@@ -74,4 +91,9 @@ export function getClients(): Clients {
 
 export function invalidateClients() {
   cached = null
+}
+
+export function getCurrentTokenAddress(): Address {
+  if (cached) return cached.tokenAddress
+  return readTokenAddressFromMeta() ?? env.tokenAddress
 }
