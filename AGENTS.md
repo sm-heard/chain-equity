@@ -15,6 +15,11 @@
 - `npm run deploy:local --workspace @chainequity/contracts` — deploy the token to the local Hardhat node.
 - `npm run dev:api` / `npm run dev:indexer` / `npm run dev:web` — launch core services for integrated demos.
 
+## Migrations & Token Rollovers
+- The active token address lives in the SQLite meta table (`meta.current_token_address`). Migrations write the new address, purge holder/event history, and invalidate viem clients so every service switches over live.
+- No manual `.env` edits or process restarts are required after a split or symbol change; the indexer will rescan from block 0 for the new contract automatically.
+- If you redeploy the token outside the migration flow, update `.env` and delete `apps/indexer/data/indexer.sqlite` once so the indexer and API rehydrate correctly.
+
 ## Coding Style & Naming Conventions
 - TypeScript-first codebase using native ES modules; stick with `import`/`export` syntax.
 - Indent with two spaces, keep lines under 120 characters, and favor descriptive camelCase identifiers.
@@ -32,5 +37,5 @@
 
 ## Security & Configuration Tips
 - Copy `.env.example` to `.env` and update `RPC_URL`, `SEPOLIA_PRIVATE_KEY`, and `ADMIN_WALLET` before running any commands.
-- Wipe stale indexer state (`rm apps/indexer/data/indexer.sqlite`) when redeploying contracts to avoid mismatched snapshots.
+- Migrations handle indexer resets automatically; only wipe `apps/indexer/data/indexer.sqlite` when performing an ad-hoc redeploy.
 - Never commit private keys or SQLite artifacts; confirm `.gitignore` catches new generated files before opening a PR.

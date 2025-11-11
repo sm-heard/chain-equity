@@ -20,6 +20,8 @@ out/
 # Data
 data/
 
+ChainEquity.md
+
 # Hardhat
 apps/contracts/cache/
 apps/contracts/artifacts/
