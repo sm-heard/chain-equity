@@ -28,3 +28,8 @@ apps/contracts/artifacts/
 
 # OS
 .DS_Store
+
+AGENTS.md
+CLAUDE.md
+plan.md
+prd.md
